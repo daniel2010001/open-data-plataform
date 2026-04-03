@@ -5,9 +5,15 @@ import { buildConfig, PayloadRequest } from 'payload'
 import { fileURLToPath } from 'url'
 
 import { Categories } from './collections/Categories'
+import { DataCollections } from './collections/DataCollections'
+import { Datasets } from './collections/Datasets'
 import { Media } from './collections/Media'
+import { Organizations } from './collections/Organizations'
 import { Pages } from './collections/Pages'
 import { Posts } from './collections/Posts'
+import { Resources } from './collections/Resources'
+import { Tags } from './collections/Tags'
+import { Teams } from './collections/Teams'
 import { Users } from './collections/Users'
 import { Footer } from './Footer/config'
 import { Header } from './Header/config'
@@ -62,7 +68,21 @@ export default buildConfig({
       connectionString: process.env.DATABASE_URL || '',
     },
   }),
-  collections: [Pages, Posts, Media, Categories, Users],
+  collections: [
+    // Core del template (se mantienen por ahora)
+    Pages,
+    Posts,
+    Media,
+    // V0 — Plataforma de datos abiertos
+    Organizations,
+    Users,
+    Categories,
+    Tags,
+    Datasets,
+    Resources,
+    Teams,
+    DataCollections,
+  ],
   cors: [getServerSideURL()].filter(Boolean),
   globals: [Header, Footer],
   plugins,
