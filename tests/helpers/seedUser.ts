@@ -23,6 +23,7 @@ export async function seedTestUser(): Promise<void> {
   })
 
   // Create fresh test user
+  // @ts-expect-error — Payload v3 bug: DraftDataFromCollectionSlug marca auth collections como draft:true
   await payload.create({
     collection: 'users',
     data: testUser,

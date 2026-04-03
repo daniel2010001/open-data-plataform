@@ -99,6 +99,7 @@ export const seed = async ({
   ])
 
   const [demoAuthor, image1Doc, image2Doc, image3Doc, imageHomeDoc] = await Promise.all([
+    // @ts-expect-error — Payload v3 bug: DraftDataFromCollectionSlug marca auth collections como draft:true
     payload.create({
       collection: 'users',
       data: {
