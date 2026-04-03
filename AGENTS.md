@@ -11,10 +11,60 @@ You are an expert Payload CMS developer. When working with Payload projects, fol
 5. **Access Control**: Understand Local API bypasses access control by default
 6. **Access Control**: Ensure roles exist when modifiyng collection or globals with access controls
 
+### BEFORE Writing Any Code
+
+**ALWAYS read the context files in `.cursor/rules/` before implementing or planning any feature.**
+This is mandatory, not optional. The files contain critical patterns, gotchas, and project-specific decisions.
+Relevant files per task:
+
+| Task                                    | Files to read first                               |
+| --------------------------------------- | ------------------------------------------------- |
+| Access control changes                  | `access-control.md`, `access-control-advanced.md` |
+| New collections or fields               | `collections.md`, `fields.md`                     |
+| Hooks (beforeChange, afterChange, etc.) | `hooks.md`                                        |
+| Queries or Local API calls              | `queries.md`                                      |
+| Custom endpoints                        | `endpoints.md`                                    |
+| Plugins                                 | `plugin-development.md`                           |
+| Custom components                       | `components.md`                                   |
+| TypeScript field guards                 | `field-type-guards.md`                            |
+| Security review                         | `security-critical.md`                            |
+| General architecture                    | `payload-overview.md`                             |
+
 ### Code Validation
 
 - To validate typescript correctness after modifying code run `tsc --noEmit`
 - Generate import maps after creating or modifying components.
+
+## Project: Open Data Platform (UMSS)
+
+This project is a **university open data platform** (Universidad Mayor de San Simón).
+Stack: Payload CMS v3, Next.js, PostgreSQL, TypeScript, ESM, pnpm.
+
+### Data Model V0
+
+| Collection       | Slug               | Notes                                                                                    |
+| ---------------- | ------------------ | ---------------------------------------------------------------------------------------- |
+| Organizations    | `organizations`    | Hierarchical tree, `canHaveChildren`, `owner`→users, `level` auto-calculated             |
+| Users            | `users`            | `systemRole`: sysadmin\|user; `orgRole`: owner\|admin\|editor\|viewer — both `saveToJWT` |
+| Datasets         | `datasets`         | draft→in_review→published→archived, `collaborators[]`, Payload native versions           |
+| Resources        | `resources`        | Children of datasets, active\|deprecated\|hidden, `file`→media                           |
+| Categories       | `categories`       | Hierarchy via plugin-nested-docs                                                         |
+| Tags             | `tags`             | Public read, authenticated write                                                         |
+| Teams            | `teams`            | User groups per org                                                                      |
+| Data Collections | `data-collections` | Thematic groupings of datasets                                                           |
+
+### Access Control Architecture
+
+- `src/access/` — reusable access functions (collection-level: `Access` type)
+- Field access is always `FieldAccess` type — returns **boolean only** (no `Where`)
+- `collection.access.admin` — inline `({ req: { user } }) => boolean` (strict, no `Where`)
+- `isSysadmin`, `isSysadminOrSelf`, `isOrgAdminOrOwner`, `authenticated`, `anyone`, `authenticatedOrPublished` — existing helpers
+
+### Known Gotchas
+
+- Payload v3 bug: `DraftDataFromCollectionSlug` incorrectly marks auth collections as `draft: true`. Fix: use `@ts-expect-error` in `src/endpoints/seed/index.ts` (line 102) and `tests/helpers/seedUser.ts` (line 26).
+- `seoPlugin` must NOT restrict `collections` — doing so removes `meta.image` from generated types.
+- `as CollectionSlug` casts are only needed BEFORE a collection is registered; not needed anywhere else in this codebase.
 
 ## Project Structure
 
@@ -725,7 +775,6 @@ export const Posts: CollectionConfig = {
 ### Performance Best Practices
 
 1. **Import correctly:**
-
    - Admin Panel: `import { Button } from '@payloadcms/ui'`
    - Frontend: `import { Button } from '@payloadcms/ui/elements/Button'`
 
@@ -740,7 +789,6 @@ export const Posts: CollectionConfig = {
    ```
 
 3. **Prefer Server Components** - Only use Client Components when you need:
-
    - State (useState, useReducer)
    - Effects (useEffect)
    - Event handlers (onClick, onChange)
@@ -1040,19 +1088,16 @@ For deeper exploration of specific topics, refer to the context files located in
 ### Available Context Files
 
 1. **`payload-overview.md`** - High-level architecture and core concepts
-
    - Payload structure and initialization
    - Configuration fundamentals
    - Database adapters overview
 
 2. **`security-critical.md`** - Critical security patterns (⚠️ IMPORTANT)
-
    - Local API access control
    - Transaction safety in hooks
    - Preventing infinite hook loops
 
 3. **`collections.md`** - Collection configurations
-
    - Basic collection patterns
    - Auth collections with RBAC
    - Upload collections
@@ -1060,7 +1105,6 @@ For deeper exploration of specific topics, refer to the context files located in
    - Globals
 
 4. **`fields.md`** - Field types and patterns
-
    - All field types with examples
    - Conditional fields
    - Virtual fields
@@ -1068,13 +1112,11 @@ For deeper exploration of specific topics, refer to the context files located in
    - Common field patterns
 
 5. **`field-type-guards.md`** - TypeScript field type utilities
-
    - Field type checking utilities
    - Safe type narrowing
    - Runtime field validation
 
 6. **`access-control.md`** - Permission patterns
-
    - Collection-level access
    - Field-level access
    - Row-level security
@@ -1082,48 +1124,41 @@ For deeper exploration of specific topics, refer to the context files located in
    - Multi-tenant access control
 
 7. **`access-control-advanced.md`** - Complex access patterns
-
    - Nested document access
    - Cross-collection permissions
    - Dynamic role hierarchies
    - Performance optimization
 
 8. **`hooks.md`** - Lifecycle hooks
-
    - Collection hooks
    - Field hooks
    - Hook context patterns
    - Common hook recipes
 
 9. **`queries.md`** - Database operations
-
    - Local API usage
    - Query operators
    - Complex queries with AND/OR
    - Performance optimization
 
 10. **`endpoints.md`** - Custom API endpoints
-
     - REST endpoint patterns
     - Authentication in endpoints
     - Error handling
     - Route parameters
 
 11. **`adapters.md`** - Database and storage adapters
-
     - MongoDB, PostgreSQL, SQLite patterns
     - Storage adapter usage (S3, Azure, GCS, etc.)
     - Custom adapter development
 
 12. **`plugin-development.md`** - Creating plugins
-
     - Plugin architecture
     - Modifying configuration
     - Plugin hooks
     - Best practices
 
 13. **`components.md`** - Custom Components
-
     - Component types (Root, Collection, Global, Field)
     - Server vs Client Components
     - Component paths and definition
