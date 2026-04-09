@@ -1,39 +1,59 @@
 import type { FieldAccess } from 'payload'
 
+import { hasOrgRole, isAuthenticated, isSysadmin } from './guards'
+
 /**
- * Field access restringido a sysadmins.
+ * Factory que genera un FieldAccess basado en guards.
  *
  * FieldAccess solo retorna boolean (no Where) — ver access-control.md.
- * Usado en campos sensibles como systemRole, organization, orgRole.
- */
-export const sysadminFieldAccess: FieldAccess = ({ req: { user } }) =>
-  typeof user?.systemRole === 'string' && user.systemRole === 'sysadmin'
-
-/**
- * Field access para campos editables por el owner de la org del documento O por sysadmin.
  *
- * Verifica que el user autenticado pertenezca a la misma organización que el documento
- * que se está editando (usando doc.organization). Si el user es sysadmin, siempre permite.
+ * Construido sobre los mismos guards que Access — un solo lugar de verdad
+ * para la lógica de roles. Cambiar isSysadmin o hasOrgRole actualiza todo.
  *
- * Usado en campos de Users: orgRole, canCreateDatasets — el owner puede gestionar
- * los roles de los users de SU org, pero no de otras orgs.
- *
- * IMPORTANTE: este check verifica la org del doc (el user editado), no la del user activo.
- * La validación de que el user activo sea el owner de esa org se hace via collection-level
- * access (create: asAdmin(orgOwner)) — este fieldAccess es la segunda capa.
+ * @param options.roles         - orgRoles permitidos además de sysadmin (default: [])
+ * @param options.allowSelf     - permite que el propio user edite su campo (default: false)
+ * @param options.allowSysadmin - sysadmin siempre puede (default: true)
  *
  * @example
- * orgRole: { update: orgOwnerOrSysadminFieldAccess }
+ * // Solo sysadmin
+ * fieldAccessFor()
+ *
+ * // Owner o sysadmin
+ * fieldAccessFor({ roles: ['owner'] })
+ *
+ * // El propio user o sysadmin (para campos como email)
+ * fieldAccessFor({ allowSelf: true })
  */
-export const orgOwnerOrSysadminFieldAccess: FieldAccess = ({ req: { user }, doc }) => {
-  if (!user) return false
-  if (user.systemRole === 'sysadmin') return true
+export const fieldAccessFor =
+  ({
+    roles = [],
+    allowSelf = false,
+    allowSysadmin = true,
+  }: {
+    roles?: NonNullable<import('@/payload-types').User['orgRole']>[]
+    allowSelf?: boolean
+    allowSysadmin?: boolean
+  } = {}): FieldAccess =>
+  (args) => {
+    if (!isAuthenticated(args)) return false
+    if (allowSysadmin && isSysadmin(args)) return true
+    if (allowSelf && args.doc?.id && String(args.doc.id) === String(args.req.user.id)) return true
+    if (roles.length > 0 && hasOrgRole(roles)(args)) return true
+    return false
+  }
 
-  // doc es el user que se está editando — verificamos que pertenece a la misma org
-  const docOrg = typeof doc?.organization === 'object' ? doc?.organization?.id : doc?.organization
-  const userOrg = typeof user.organization === 'object' ? user.organization?.id : user.organization
+// ---------------------------------------------------------------------------
+// Aliases de conveniencia
+// ---------------------------------------------------------------------------
 
-  if (!docOrg || !userOrg) return false
+/** Solo sysadmin */
+export const sysadminFieldAccess: FieldAccess = fieldAccessFor()
 
-  return String(docOrg) === String(userOrg)
-}
+/** Owner o sysadmin */
+export const orgOwnerFieldAccess: FieldAccess = fieldAccessFor({ roles: ['owner'] })
+
+/** Owner, admin o sysadmin */
+export const orgAdminFieldAccess: FieldAccess = fieldAccessFor({ roles: ['owner', 'admin'] })
+
+/** El propio user o sysadmin */
+export const selfOrSysadminFieldAccess: FieldAccess = fieldAccessFor({ allowSelf: true })

@@ -1,22 +1,18 @@
 import type { CollectionConfig } from 'payload'
 import { slugField, ValidationError } from 'payload'
 
-import { anyone } from '@/access/anyone'
-import { asAdmin } from '@/access/asAdmin'
-import { sysadminFieldAccess } from '@/access/fieldAccess'
-import { orgOwner } from '@/access/orgOwner'
-import { sysadmin } from '@/access/sysadmin'
+import { allow, allowIf, anyone, isOrgOwner, isSysadmin, sysadminFieldAccess } from '@/access'
 
 export const Organizations: CollectionConfig = {
   slug: 'organizations',
   access: {
-    create: sysadmin,
+    create: allowIf(isSysadmin),
     read: anyone,
     // Sysadmin puede todo; el owner del documento puede actualizar su propia org.
     // orgRole() no aplica acá — Organizations no tiene campo `organization`,
     // el ownership se determina por el campo `owner` del documento.
-    update: asAdmin(orgOwner),
-    delete: sysadmin,
+    update: allow(allowIf(isSysadmin), isOrgOwner),
+    delete: allowIf(isSysadmin),
   },
   admin: {
     useAsTitle: 'name',
@@ -97,9 +93,10 @@ export const Organizations: CollectionConfig = {
           id: ownerId,
           data: {
             organization: doc.id,
-            // El owner tiene orgRole 'admin' en el JWT — el ownership real está en
+            // El owner tiene orgRole 'owner' en el JWT — el ownership real está en
             // Organization.owner, no en el enum de orgRole (que solo tiene admin|member).
-            orgRole: 'admin',
+            orgRole: 'owner',
+            canCreateDatasets: true,
           },
           req, // misma transacción
         })
@@ -114,7 +111,7 @@ export const Organizations: CollectionConfig = {
       required: true,
     },
     slugField({
-      position: undefined,
+      useAsSlug: 'name',
     }),
     {
       name: 'description',
@@ -148,14 +145,10 @@ export const Organizations: CollectionConfig = {
       index: true,
       // Solo sysadmin puede cambiar el parent — reorganizar el árbol es una operación
       // administrativa que afecta a toda la jerarquía.
-      access: {
-        update: sysadminFieldAccess,
-      },
+      access: { update: sysadminFieldAccess },
       // Filtrar solo orgs que pueden tener hijos — primera capa de protección en UI.
       // La segunda capa es el hook beforeValidate en el backend.
-      filterOptions: () => ({
-        canHaveChildren: { equals: true },
-      }),
+      filterOptions: () => ({ canHaveChildren: { equals: true } }),
     },
     {
       name: 'level',
@@ -173,9 +166,7 @@ export const Organizations: CollectionConfig = {
       type: 'checkbox',
       defaultValue: false,
       // Field access solo retorna boolean (no Where) — ver access-control.md
-      access: {
-        update: sysadminFieldAccess,
-      },
+      access: { update: sysadminFieldAccess },
     },
 
     // ---- Gobernanza ----
@@ -187,13 +178,9 @@ export const Organizations: CollectionConfig = {
       index: true,
       // Solo sysadmin puede cambiar el owner — transferir ownership es una operación
       // administrativa global, no de la org misma.
-      access: {
-        update: sysadminFieldAccess,
-      },
+      access: { update: sysadminFieldAccess },
       // Filtrar solo users sin org asignada — un user no puede ser owner de dos orgs.
-      filterOptions: () => ({
-        organization: { exists: false },
-      }),
+      filterOptions: () => ({ organization: { exists: false } }),
     },
 
     // ---- Estado ----
@@ -203,9 +190,7 @@ export const Organizations: CollectionConfig = {
       defaultValue: true,
       index: true,
       // Solo sysadmin activa/desactiva orgs — es una decisión del sistema, no de la org.
-      access: {
-        update: sysadminFieldAccess,
-      },
+      access: { update: sysadminFieldAccess },
     },
   ],
   timestamps: true,

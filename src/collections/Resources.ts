@@ -1,26 +1,32 @@
 import type { CollectionConfig } from 'payload'
 
-import { asAdmin } from '@/access/asAdmin'
+import { allow, allowIf, getOrgId, hasOrgRole, isAnyone, isSysadmin } from '@/access'
 import { collaborator } from '@/access/collaborator'
-import { or } from '@/access/or'
-import { orgRole } from '@/access/orgRole'
-import { sysadmin } from '@/access/sysadmin'
-import type { Dataset, Organization } from '@/payload-types'
+import type { Organization } from '@/payload-types'
 
 export const Resources: CollectionConfig = {
   slug: 'resources',
   access: {
     // Mismo scope que Datasets: org members ven todo; colaboradores ven los suyos; anónimos solo activos
-    read: or(
-      asAdmin(orgRole(['owner', 'admin', 'member'])),
+    read: allow(
+      allowIf(isSysadmin),
+      allowIf(hasOrgRole(['owner', 'admin', 'member']), (args) => ({
+        organization: { equals: getOrgId(args.req.user) },
+      })),
       collaborator(['editor', 'viewer']),
-      () => ({ status: { equals: 'active' } }),
+      allowIf(isAnyone, { status: { equals: 'active' } }),
     ),
     // Solo owner/admin de la org (se verifica vía organization desnormalizado)
-    create: asAdmin(orgRole(['owner', 'admin'])),
+    create: allow(allowIf(isSysadmin), allowIf(hasOrgRole(['owner', 'admin']))),
     // owner/admin siempre; colaborador editor del dataset padre
-    update: or(asAdmin(orgRole(['owner', 'admin'])), collaborator('editor')),
-    delete: sysadmin,
+    update: allow(
+      allowIf(isSysadmin),
+      allowIf(hasOrgRole(['owner', 'admin']), (args) => ({
+        organization: { equals: getOrgId(args.req.user) },
+      })),
+      collaborator('editor'),
+    ),
+    delete: allowIf(isSysadmin),
   },
   admin: {
     useAsTitle: 'title',

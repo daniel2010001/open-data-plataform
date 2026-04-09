@@ -438,7 +438,13 @@ export interface User {
   id: number;
   name?: string | null;
   systemRole: 'sysadmin' | 'user';
+  /**
+   * Organización del usuario (se asigna automáticamente al crear)
+   */
   organization?: (number | null) | Organization;
+  /**
+   * Rol dentro de la organización. "Owner" se asigna al crear la org.
+   */
   orgRole?: ('owner' | 'admin' | 'member') | null;
   /**
    * Permite que un member cree datasets en su organización
@@ -491,7 +497,7 @@ export interface Organization {
    */
   level?: number | null;
   canHaveChildren?: boolean | null;
-  owner?: (number | null) | User;
+  owner: number | User;
   isActive?: boolean | null;
   updatedAt: string;
   createdAt: string;

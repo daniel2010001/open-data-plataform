@@ -1,9 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { slugField } from 'payload'
 
-import { authenticated } from '@/access/authenticated'
-import { or } from '@/access/or'
-import { sysadmin } from '@/access/sysadmin'
+import { allow, allowIf, anyone, isAnyone, isAuthenticated, isSysadmin } from '@/access'
 
 // NOTA: La variable se llama DataCollections (no Collections) porque
 // `collections` es una palabra reservada en Payload/JS. El slug es 'data-collections'.
@@ -13,11 +11,11 @@ export const DataCollections: CollectionConfig = {
   access: {
     // TODO (V1): org-scope no aplica en V0 — DataCollections son transversales a orgs.
     // Si en el futuro se agrega un campo `organization`, aplicar isSysadminOrOrgRole aquí.
-    create: authenticated,
+    create: allowIf(isAuthenticated),
     // Usuarios autenticados ven todo; anónimos solo ven las colecciones públicas
-    read: or(authenticated, () => ({ isPublic: { equals: true } })),
-    update: authenticated,
-    delete: sysadmin,
+    read: allow(allowIf(isAuthenticated), allowIf(isAnyone, { isPublic: { equals: true } })),
+    update: allowIf(isAuthenticated),
+    delete: allowIf(isSysadmin),
   },
   admin: {
     useAsTitle: 'title',

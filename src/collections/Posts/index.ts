@@ -9,8 +9,7 @@ import {
   lexicalEditor,
 } from '@payloadcms/richtext-lexical'
 
-import { authenticated } from '@/access/authenticated'
-import { or } from '@/access/or'
+import { allow, allowIf, isAnyone, isAuthenticated } from '@/access'
 import { Banner } from '@/blocks/Banner/config'
 import { Code } from '@/blocks/Code/config'
 import { MediaBlock } from '@/blocks/MediaBlock/config'
@@ -29,10 +28,10 @@ import {
 export const Posts: CollectionConfig<'posts'> = {
   slug: 'posts',
   access: {
-    create: authenticated,
-    read: or(authenticated, () => ({ _status: { equals: 'published' } })),
-    update: authenticated,
-    delete: authenticated,
+    create: allowIf(isAuthenticated),
+    read: allow(allowIf(isAuthenticated), allowIf(isAnyone, { _status: { equals: 'published' } })),
+    update: allowIf(isAuthenticated),
+    delete: allowIf(isAuthenticated),
   },
   // This config controls what's populated by default when a post is referenced
   // https://payloadcms.com/docs/queries/select#defaultpopulate-collection-config-property

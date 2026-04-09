@@ -1,20 +1,22 @@
 import type { CollectionConfig } from 'payload'
 import { slugField } from 'payload'
 
-import { asAdmin } from '@/access/asAdmin'
-import { authenticated } from '@/access/authenticated'
-import { orgRole } from '@/access/orgRole'
-import { sysadmin } from '@/access/sysadmin'
+import { allow, allowIf, getOrgId, hasOrgRole, isAuthenticated, isSysadmin } from '@/access'
 
 export const Teams: CollectionConfig = {
   slug: 'teams',
   access: {
     // Solo owner/admin de la org pueden crear o modificar teams de su org
-    create: asAdmin(orgRole(['owner', 'admin'])),
+    create: allow(allowIf(isSysadmin), allowIf(hasOrgRole(['owner', 'admin']))),
     // Teams no son públicos — solo usuarios autenticados pueden leer
-    read: authenticated,
-    update: asAdmin(orgRole(['owner', 'admin'])),
-    delete: sysadmin,
+    read: allowIf(isAuthenticated),
+    update: allow(
+      allowIf(isSysadmin),
+      allowIf(hasOrgRole(['owner', 'admin']), (args) => ({
+        organization: { equals: getOrgId(args.req.user) },
+      })),
+    ),
+    delete: allowIf(isSysadmin),
   },
   admin: {
     useAsTitle: 'name',

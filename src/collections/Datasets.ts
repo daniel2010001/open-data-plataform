@@ -2,31 +2,36 @@ import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import type { CollectionConfig } from 'payload'
 import { slugField } from 'payload'
 
-import { asAdmin } from '@/access/asAdmin'
+import { allow, allowIf, getOrgId, hasOrgRole, isAnyone, isSysadmin } from '@/access'
 import { collaborator } from '@/access/collaborator'
-import { or } from '@/access/or'
-import { orgRole } from '@/access/orgRole'
-import { sysadmin } from '@/access/sysadmin'
 import { validateStatusTransition } from '@/hooks/validateStatusTransition'
-import type { User } from '@/payload-types'
 
 export const Datasets: CollectionConfig = {
   slug: 'datasets',
   access: {
     // owner/admin de la org ven todo; colaboradores ven los suyos; anónimos solo publicados
-    read: or(
-      asAdmin(orgRole(['owner', 'admin', 'member'])),
+    read: allow(
+      allowIf(isSysadmin),
+      allowIf(hasOrgRole(['owner', 'admin', 'member']), (args) => ({
+        organization: { equals: getOrgId(args.req.user) },
+      })),
       collaborator(['editor', 'viewer']),
-      () => ({ status: { equals: 'published' } }),
+      allowIf(isAnyone, { status: { equals: 'published' } }),
     ),
     // Solo owner/admin de la org pueden crear datasets; o un member con canCreateDatasets
-    create: or(asAdmin(orgRole(['owner', 'admin'])), ({ req: { user } }) => {
-      const u = user as User | null
-      return Boolean(u?.orgRole === 'member' && u?.canCreateDatasets)
+    create: allow(allowIf(isSysadmin), allowIf(hasOrgRole(['owner', 'admin'])), (args) => {
+      const user = args.req.user
+      return Boolean(user?.orgRole === 'member' && user?.canCreateDatasets)
     }),
     // owner/admin siempre; member si es colaborador editor en este dataset
-    update: or(asAdmin(orgRole(['owner', 'admin'])), collaborator('editor')),
-    delete: sysadmin,
+    update: allow(
+      allowIf(isSysadmin),
+      allowIf(hasOrgRole(['owner', 'admin']), (args) => ({
+        organization: { equals: getOrgId(args.req.user) },
+      })),
+      collaborator('editor'),
+    ),
+    delete: allowIf(isSysadmin),
   },
   admin: {
     useAsTitle: 'title',
