@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { allowIf, allow, isSysadmin, hasOrgRole, getOrgId } from '@/access'
 import { sysadminOnly, ownerOrSysadmin } from '@/access'
+import { assignCreatedBy } from '../_hooks/assignCreatedBy'
 
 export const Organizations: CollectionConfig = {
   slug: 'organizations',
@@ -34,6 +35,9 @@ export const Organizations: CollectionConfig = {
     // R4 — Solo sysadmin puede eliminar orgs
     delete: allowIf(isSysadmin),
   },
+  hooks: {
+    beforeChange: [assignCreatedBy],
+  },
   fields: [
     {
       name: 'name',
@@ -45,7 +49,6 @@ export const Organizations: CollectionConfig = {
       name: 'slug',
       type: 'text',
       unique: true,
-      // Generado automáticamente por Payload desde 'name'
       admin: {
         readOnly: true,
       },
@@ -89,7 +92,11 @@ export const Organizations: CollectionConfig = {
       name: 'createdBy',
       type: 'relationship',
       relationTo: 'users',
-      // Campo de auditoría — solo sysadmin puede leer/modificar
+      // Autoasignado por hook — nunca editable por el usuario
+      admin: {
+        readOnly: true,
+        condition: (_, siblingData) => Boolean(siblingData?.createdBy),
+      },
       access: {
         read: sysadminOnly,
         update: sysadminOnly,

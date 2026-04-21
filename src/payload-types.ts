@@ -97,6 +97,7 @@ export interface Config {
   widgets: {
     collections: CollectionsWidget;
   };
+  strictDraftTypes: true;
   user: User;
   jobs: {
     tasks: unknown;
@@ -127,6 +128,10 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
+  name: string;
+  systemRole: 'sysadmin' | 'user';
+  isActive: boolean;
+  createdBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -294,6 +299,10 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  name?: T;
+  systemRole?: T;
+  isActive?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;

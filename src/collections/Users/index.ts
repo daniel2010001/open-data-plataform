@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { allowIf, allow, isSysadmin, isAuthenticated, hasOrgRole, getOrgId } from '@/access'
 import { sysadminOnly, selfOrSysadmin } from '@/access'
+import { assignCreatedBy } from '../_hooks/assignCreatedBy'
 import { autoAssignMembership } from './hooks/afterCreate'
 import { preventLastSysadminDeactivation } from './hooks/beforeChange'
 
@@ -47,8 +48,12 @@ export const Users: CollectionConfig = {
   hooks: {
     // R2 — Si owner crea un user, auto-asignar OrgMembership con orgRole: member
     afterChange: [autoAssignMembership],
-    // R10 — Bloquear desactivación del último sysadmin activo
-    beforeChange: [preventLastSysadminDeactivation],
+    beforeChange: [
+      // Autoasignar createdBy en create
+      assignCreatedBy,
+      // R10 — Bloquear desactivación del último sysadmin activo
+      preventLastSysadminDeactivation,
+    ],
   },
   fields: [
     // email es manejado por Payload auth — no se redeclara
@@ -87,6 +92,11 @@ export const Users: CollectionConfig = {
       name: 'createdBy',
       type: 'relationship',
       relationTo: 'users',
+      // Autoasignado por hook — nunca editable por el usuario
+      admin: {
+        readOnly: true,
+        condition: (_, siblingData) => Boolean(siblingData?.createdBy),
+      },
       access: {
         read: sysadminOnly,
         update: sysadminOnly,
