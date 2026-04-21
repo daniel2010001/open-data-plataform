@@ -1,4 +1,5 @@
 import type { CollectionBeforeChangeHook } from 'payload'
+import type { Where } from 'payload'
 
 import type { AuthenticatedUser } from '@/access/types'
 
@@ -66,7 +67,7 @@ export const enforceOwnerConstraints: CollectionBeforeChangeHook = async ({
     if (!orgId) return data
 
     // En update: excluir el doc actual (podría estar cambiando el owner de la misma entrada)
-    const whereClause: Record<string, unknown> = {
+    const whereClause: Where = {
       and: [
         { organization: { equals: orgId } },
         { orgRole: { equals: 'owner' } },
@@ -74,12 +75,12 @@ export const enforceOwnerConstraints: CollectionBeforeChangeHook = async ({
     }
 
     if (operation === 'update' && originalDoc?.id) {
-      ;(whereClause.and as unknown[]).push({ id: { not_equals: originalDoc.id } })
+      ;(whereClause.and as Where[]).push({ id: { not_equals: originalDoc.id } })
     }
 
     const existing = await req.payload.find({
       collection: 'org-memberships',
-      where: whereClause as any,
+      where: whereClause,
       limit: 1,
       overrideAccess: true,
     })
