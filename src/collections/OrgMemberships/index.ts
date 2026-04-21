@@ -76,6 +76,7 @@ export const OrgMemberships: CollectionConfig = {
       type: 'date',
       admin: {
         readOnly: true,
+        condition: (_, siblingData) => Boolean(siblingData?.id),
       },
       hooks: {
         beforeValidate: [

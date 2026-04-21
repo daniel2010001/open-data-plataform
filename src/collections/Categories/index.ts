@@ -54,10 +54,10 @@ export const Categories: CollectionConfig = {
       name: 'level',
       type: 'number',
       defaultValue: 0,
-      // R8 — Calculado por hook, nunca editable directamente
+      // R8 — Calculado por hook, nunca editable directamente. Oculto en create.
       admin: {
         readOnly: true,
-        condition: (_, siblingData) => siblingData?.level !== undefined,
+        condition: (_, siblingData) => Boolean(siblingData?.id),
       },
     },
     {

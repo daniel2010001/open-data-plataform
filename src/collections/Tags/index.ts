@@ -43,9 +43,10 @@ export const Tags: CollectionConfig = {
       name: 'usageCount',
       type: 'number',
       defaultValue: 0,
-      // Mantenido por hooks de Datasets (Bloque 3). readOnly para usuarios.
+      // Mantenido por hooks de Datasets (Bloque 3). readOnly para usuarios. Oculto en create.
       admin: {
         readOnly: true,
+        condition: (_, siblingData) => Boolean(siblingData?.id),
         description: 'Calculado automáticamente. No editar manualmente.',
       },
     },
