@@ -1,4 +1,4 @@
-import type { User } from '@/payload-types'
+import type { User, Organization } from '@/payload-types'
 
 /**
  * Extensión del User autenticado con campos derivados de OrgMemberships.
@@ -12,7 +12,7 @@ import type { User } from '@/payload-types'
 export type AuthenticatedUser = User & {
   systemRole?: 'sysadmin' | 'user'
   orgRole?: 'owner' | 'admin' | 'member'
-  organization?: string // UUID string — nunca number
+  organization?: Organization['id']
 }
 
 /**
@@ -38,7 +38,7 @@ export type Sysadmin = WithUser & {
  * R preserva el tipo exacto del rol — no colapsa a la union completa.
  */
 export type OrgRole<R extends NonNullable<AuthenticatedUser['orgRole']>> = WithUser & {
-  req: { user: AuthenticatedUser & { orgRole: R; organization: string } }
+  req: { user: AuthenticatedUser & { orgRole: R; organization: Organization['id'] } }
 }
 
 /**

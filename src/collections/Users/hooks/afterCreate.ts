@@ -38,16 +38,11 @@ export const autoAssignMembership: CollectionAfterChangeHook = async ({
 
   if (existing.totalDocs > 0) return doc
 
-  // orgId viene del JWT como string — lo parseamos al tipo nativo del adapter (number en PG/SQLite).
-  // Si se migra a UUID plugin, el adapter retorna string directamente y Number() produce NaN,
-  // señalando que hay que actualizar este cast. Ver: payload-types Organization['id'].
-  const parsedOrgId = Number(orgId)
-
   await req.payload.create({
     collection: 'org-memberships',
     data: {
       user: doc.id,
-      organization: parsedOrgId,
+      organization: orgId,
       orgRole: 'member',
     },
     overrideAccess: true,

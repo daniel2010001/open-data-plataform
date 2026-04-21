@@ -1,4 +1,5 @@
 import type { AuthenticatedUser, Context, Guard, OrgRole, Sysadmin, WithUser } from './types'
+import type { Organization } from '@/payload-types'
 
 // ---------------------------------------------------------------------------
 // Siempre pasa (fallback público)
@@ -30,10 +31,8 @@ export const isAuthenticated: Guard<Context, Context & WithUser> = (
 // ---------------------------------------------------------------------------
 
 /** ¿Es sysadmin? Refina Context → Context & Sysadmin */
-export const isSysadmin: Guard<Context, Context & Sysadmin> = (
-  args,
-): args is Context & Sysadmin =>
-  isAuthenticated(args) && (args.req.user as AuthenticatedUser).systemRole === 'sysadmin'
+export const isSysadmin: Guard<Context, Context & Sysadmin> = (args): args is Context & Sysadmin =>
+  isAuthenticated(args) && args.req.user.systemRole === 'sysadmin'
 
 // ---------------------------------------------------------------------------
 // Roles por organización (dependen del JWT — disponibles desde Fase 2)
@@ -67,5 +66,5 @@ export const hasOrgRole =
  * Solo llamar después de pasar hasOrgRole — garantiza que organization existe.
  * Retorna string (UUID) — nunca number.
  */
-export const getOrgId = (user: AuthenticatedUser & { organization: string }): string =>
+export const getOrgId = (user: AuthenticatedUser & { organization: Organization['id'] }): Organization['id'] =>
   user.organization
