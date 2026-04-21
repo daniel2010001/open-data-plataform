@@ -10,6 +10,7 @@ import { Media } from './collections/Media'
 import { Organizations } from './collections/Organizations'
 import { OrgMemberships } from './collections/OrgMemberships'
 import { Categories } from './collections/Categories'
+import { Tags } from './collections/Tags'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -21,7 +22,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Organizations, OrgMemberships, Categories],
+  collections: [Users, Media, Organizations, OrgMemberships, Categories, Tags],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
