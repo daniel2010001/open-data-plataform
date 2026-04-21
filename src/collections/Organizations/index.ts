@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { slugField } from 'payload'
 
 import { allowIf, allow, isSysadmin, hasOrgRole, getOrgId } from '@/access'
 import { sysadminOnly, ownerOrSysadmin } from '@/access'
@@ -45,30 +46,8 @@ export const Organizations: CollectionConfig = {
       required: true,
       unique: true,
     },
-    {
-      name: 'slug',
-      type: 'text',
-      unique: true,
-      admin: {
-        readOnly: true,
-      },
-      hooks: {
-        beforeValidate: [
-          ({ value, data, operation }) => {
-            if (operation === 'create' || !value) {
-              const source = data?.name as string | undefined
-              if (!source) return value
-              return source
-                .toLowerCase()
-                .trim()
-                .replace(/\s+/g, '-')
-                .replace(/[^a-z0-9-]/g, '')
-            }
-            return value
-          },
-        ],
-      },
-    },
+    // slug: generado desde 'name' via Payload nativo. Único global.
+    slugField({ useAsSlug: 'name' }),
     {
       name: 'description',
       type: 'richText',
