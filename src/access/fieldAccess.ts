@@ -1,6 +1,6 @@
 import type { FieldAccess } from 'payload'
 
-import type { AuthenticatedUser } from './types'
+import type { OrgRoleValue } from './types'
 import { hasOrgRole, isAuthenticated, isSysadmin } from './guards'
 
 /**
@@ -31,7 +31,7 @@ export const fieldAccessFor =
     allowSelf = false,
     allowSysadmin = true,
   }: {
-    roles?: NonNullable<AuthenticatedUser['orgRole']>[]
+    roles?: NonNullable<OrgRoleValue>[]
     allowSelf?: boolean
     allowSysadmin?: boolean
   } = {}): FieldAccess =>

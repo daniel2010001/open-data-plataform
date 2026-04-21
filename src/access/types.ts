@@ -1,17 +1,27 @@
-import type { User, Organization } from '@/payload-types'
+import type { User, Organization, OrgMembership } from '@/payload-types'
+
+/**
+ * Roles de org inferidos desde la collection OrgMemberships — único lugar de verdad.
+ * Si se agrega un rol en la collection, este tipo se actualiza con generate:types.
+ */
+export type OrgRoleValue = OrgMembership['orgRole']
+
+/**
+ * Roles de sistema inferidos desde la collection Users.
+ * Igual principio: un solo lugar de verdad.
+ */
+export type SystemRoleValue = NonNullable<User['systemRole']>
 
 /**
  * Extensión del User autenticado con campos derivados de OrgMemberships.
- * Estos campos NO son parte de la collection Users — se inyectan en el JWT
- * durante la autenticación (Fase 2). El tipo User generado por Payload no
- * los incluye, por eso viven acá como extensión explícita.
+ * Estos campos NO son parte de la collection Users — se inyectan en cada
+ * request via middleware (Fase 2) consultando la DB, no el JWT.
  *
- * systemRole se extiende aquí también porque Payload genera el tipo User
- * sin los campos custom hasta que se regenera payload-types.ts.
+ * systemRole NO se redeclara aquí — ya viene en User con el tipo correcto
+ * y no es opcional. Extender con "?" lo debilitaría.
  */
 export type AuthenticatedUser = User & {
-  systemRole?: 'sysadmin' | 'user'
-  orgRole?: 'owner' | 'admin' | 'member'
+  orgRole?: OrgRoleValue
   organization?: Organization['id']
 }
 
@@ -24,7 +34,7 @@ export type Context<U = unknown> = { req: { user?: U } }
 
 /**
  * Refinamiento: contexto con user garantizado (autenticado).
- * Usa AuthenticatedUser para incluir orgRole y organization del JWT.
+ * Usa AuthenticatedUser para incluir orgRole y organization del request.
  */
 export type WithUser = { req: { user: AuthenticatedUser } }
 
@@ -34,10 +44,10 @@ export type Sysadmin = WithUser & {
 }
 
 /**
- * User con un orgRole específico y organización presente en el JWT.
+ * User con un orgRole específico y organización presente en el request.
  * R preserva el tipo exacto del rol — no colapsa a la union completa.
  */
-export type OrgRole<R extends NonNullable<AuthenticatedUser['orgRole']>> = WithUser & {
+export type OrgRole<R extends NonNullable<OrgRoleValue>> = WithUser & {
   req: { user: AuthenticatedUser & { orgRole: R; organization: Organization['id'] } }
 }
 

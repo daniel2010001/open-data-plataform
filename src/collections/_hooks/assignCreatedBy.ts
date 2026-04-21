@@ -15,7 +15,7 @@ import type { User } from '@/payload-types'
 export const assignCreatedBy: CollectionBeforeChangeHook = ({ data, req, operation }) => {
   if (operation !== 'create') return data
 
-  const userId = req.user?.id as User['id'] | undefined
+  const userId = req.user?.id
   if (!userId) return data
 
   return { ...data, createdBy: userId }

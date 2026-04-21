@@ -1,4 +1,5 @@
 import type { AuthenticatedUser, Context, Guard, OrgRole, Sysadmin, WithUser } from './types'
+import type { OrgRoleValue } from './types'
 import type { Organization } from '@/payload-types'
 
 // ---------------------------------------------------------------------------
@@ -50,10 +51,10 @@ export const isSysadmin: Guard<Context, Context & Sysadmin> = (args): args is Co
  * Este guard es puro: solo chequea orgRole y organization presentes.
  */
 export const hasOrgRole =
-  <R extends NonNullable<AuthenticatedUser['orgRole']>>(roles: R[]) =>
+  <R extends NonNullable<OrgRoleValue>>(roles: R[]) =>
   (args: Context): args is Context & OrgRole<R> => {
     if (!isAuthenticated(args)) return false
-    const user = args.req.user as AuthenticatedUser
+    const user = args.req.user
     return !!user.orgRole && !!user.organization && roles.includes(user.orgRole as R)
   }
 
@@ -66,5 +67,6 @@ export const hasOrgRole =
  * Solo llamar después de pasar hasOrgRole — garantiza que organization existe.
  * Retorna string (UUID) — nunca number.
  */
-export const getOrgId = (user: AuthenticatedUser & { organization: Organization['id'] }): Organization['id'] =>
-  user.organization
+export const getOrgId = (
+  user: AuthenticatedUser & { organization: Organization['id'] },
+): Organization['id'] => user.organization

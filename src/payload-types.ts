@@ -181,7 +181,11 @@ export interface Media {
 export interface Organization {
   id: number;
   name: string;
-  slug?: string | null;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
   description?: {
     root: {
       type: string;
@@ -396,6 +400,7 @@ export interface MediaSelect<T extends boolean = true> {
  */
 export interface OrganizationsSelect<T extends boolean = true> {
   name?: T;
+  generateSlug?: T;
   slug?: T;
   description?: T;
   logo?: T;
