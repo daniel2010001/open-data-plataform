@@ -3,6 +3,7 @@ import { slugField } from 'payload'
 
 import { allow, allowIf, anyone, isAuthenticated, isSysadmin, sysadminOnly } from '@/access'
 import { assignCreatedBy } from '../_hooks/assignCreatedBy'
+import { tagsBeforeValidate } from './hooks/beforeValidate'
 
 export const Tags: CollectionConfig = {
   slug: 'tags',
@@ -25,6 +26,7 @@ export const Tags: CollectionConfig = {
     delete: allowIf(isSysadmin),
   },
   hooks: {
+    beforeValidate: [tagsBeforeValidate],
     beforeChange: [assignCreatedBy],
   },
   fields: [
