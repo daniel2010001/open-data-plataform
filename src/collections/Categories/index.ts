@@ -3,6 +3,7 @@ import { slugField } from 'payload'
 
 import { allow, allowIf, isSysadmin, sysadminOnly } from '@/access'
 import { assignCreatedBy } from '../_hooks/assignCreatedBy'
+import { categoriesBeforeChange } from './hooks/beforeChange'
 
 export const Categories: CollectionConfig = {
   slug: 'categories',
@@ -26,7 +27,7 @@ export const Categories: CollectionConfig = {
     delete: allowIf(isSysadmin),
   },
   hooks: {
-    beforeChange: [assignCreatedBy],
+    beforeChange: [assignCreatedBy, categoriesBeforeChange],
   },
   fields: [
     {
