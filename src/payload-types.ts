@@ -73,6 +73,7 @@ export interface Config {
     'org-memberships': OrgMembership;
     categories: Category;
     tags: Tag;
+    datasets: Dataset;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -86,6 +87,7 @@ export interface Config {
     'org-memberships': OrgMembershipsSelect<false> | OrgMembershipsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     tags: TagsSelect<false> | TagsSelect<true>;
+    datasets: DatasetsSelect<false> | DatasetsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -262,6 +264,78 @@ export interface Tag {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "datasets".
+ */
+export interface Dataset {
+  id: number;
+  title: string;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  summary: string;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  organization: number | Organization;
+  category?: (number | null) | Category;
+  tags?: (number | Tag)[] | null;
+  license?: ('cc-by' | 'cc-by-sa' | 'cc-by-nc' | 'odc-by' | 'odbl' | 'public-domain' | 'other') | null;
+  /**
+   * Descripción de la licencia personalizada — requerido si licencia es "Otro".
+   */
+  licenseCustom?: string | null;
+  status?: ('active' | 'archived' | 'disabled') | null;
+  editorialStatus?: ('draft' | 'in_review' | 'approved' | 'rejected') | null;
+  visibility?: ('private' | 'org_only' | 'public') | null;
+  collaborators?:
+    | {
+        user: number | User;
+        role: 'steward' | 'editor' | 'viewer';
+        assignmentType: 'direct' | 'team';
+        /**
+         * ID del team que originó esta asignación (Plus v1)
+         */
+        teamId?: string | null;
+        /**
+         * Snapshot del orgId del usuario al momento de asignar
+         */
+        orgIdAtAssignment?: number | null;
+        assignedBy?: (number | null) | User;
+        /**
+         * Soft-delete del collaborator — si tiene valor, el acceso fue revocado
+         */
+        revokedAt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  createdBy?: (number | null) | User;
+  /**
+   * Si este dataset es un clon, referencia al dataset original (v2+)
+   */
+  originDatasetId?: (number | null) | Dataset;
+  /**
+   * Soft-delete. Si tiene valor, el dataset está eliminado. Solo sysadmin puede restaurar.
+   */
+  deletedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -307,6 +381,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'tags';
         value: number | Tag;
+      } | null)
+    | ({
+        relationTo: 'datasets';
+        value: number | Dataset;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -447,6 +525,42 @@ export interface TagsSelect<T extends boolean = true> {
   slug?: T;
   usageCount?: T;
   createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "datasets_select".
+ */
+export interface DatasetsSelect<T extends boolean = true> {
+  title?: T;
+  generateSlug?: T;
+  slug?: T;
+  summary?: T;
+  description?: T;
+  organization?: T;
+  category?: T;
+  tags?: T;
+  license?: T;
+  licenseCustom?: T;
+  status?: T;
+  editorialStatus?: T;
+  visibility?: T;
+  collaborators?:
+    | T
+    | {
+        user?: T;
+        role?: T;
+        assignmentType?: T;
+        teamId?: T;
+        orgIdAtAssignment?: T;
+        assignedBy?: T;
+        revokedAt?: T;
+        id?: T;
+      };
+  createdBy?: T;
+  originDatasetId?: T;
+  deletedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
