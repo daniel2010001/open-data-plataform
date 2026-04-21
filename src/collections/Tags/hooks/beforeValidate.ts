@@ -35,7 +35,7 @@ export const tagsBeforeValidate: CollectionBeforeValidateHook = async ({
   // -------------------------------------------------------------------------
   if (operation === 'create') {
     const existing = await req.payload.find({
-      collection: 'tags' as 'users', // temp: hasta generate:types
+      collection: 'tags',
       where: { name: { equals: normalized } },
       limit: 1,
       req,

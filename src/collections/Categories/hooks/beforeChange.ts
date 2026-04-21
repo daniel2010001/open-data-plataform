@@ -1,8 +1,5 @@
 import type { CollectionBeforeChangeHook } from 'payload'
-
-// TODO: reemplazar 'any' por Category una vez regenerados los tipos (task 6)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Category = any
+import type { Category } from '@/payload-types'
 
 /**
  * Hook beforeChange — Categories
@@ -29,7 +26,7 @@ export const categoriesBeforeChange: CollectionBeforeChangeHook<Category> = asyn
 
   if (parentId) {
     const parent = await req.payload.findByID({
-      collection: 'categories' as 'users', // temp: hasta generate:types
+      collection: 'categories',
       id: parentId as Category['id'],
       req,
       overrideAccess: true,
@@ -47,7 +44,7 @@ export const categoriesBeforeChange: CollectionBeforeChangeHook<Category> = asyn
 
   if (nameChanged || parentChanged) {
     const query = await req.payload.find({
-      collection: 'categories' as 'users', // temp: hasta generate:types
+      collection: 'categories',
       where: {
         and: [
           { name: { equals: data.name } },

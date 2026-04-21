@@ -71,6 +71,8 @@ export interface Config {
     media: Media;
     organizations: Organization;
     'org-memberships': OrgMembership;
+    categories: Category;
+    tags: Tag;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -82,6 +84,8 @@ export interface Config {
     media: MediaSelect<false> | MediaSelect<true>;
     organizations: OrganizationsSelect<false> | OrganizationsSelect<true>;
     'org-memberships': OrgMembershipsSelect<false> | OrgMembershipsSelect<true>;
+    categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    tags: TagsSelect<false> | TagsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -214,6 +218,46 @@ export interface OrgMembership {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "categories".
+ */
+export interface Category {
+  id: number;
+  name: string;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  description?: string | null;
+  parent?: (number | null) | Category;
+  level?: number | null;
+  isActive?: boolean | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tags".
+ */
+export interface Tag {
+  id: number;
+  name: string;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  /**
+   * Calculado automáticamente. No editar manualmente.
+   */
+  usageCount?: number | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -251,6 +295,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'org-memberships';
         value: number | OrgMembership;
+      } | null)
+    | ({
+        relationTo: 'categories';
+        value: number | Category;
+      } | null)
+    | ({
+        relationTo: 'tags';
+        value: number | Tag;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -361,6 +413,35 @@ export interface OrgMembershipsSelect<T extends boolean = true> {
   organization?: T;
   orgRole?: T;
   joinedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "categories_select".
+ */
+export interface CategoriesSelect<T extends boolean = true> {
+  name?: T;
+  generateSlug?: T;
+  slug?: T;
+  description?: T;
+  parent?: T;
+  level?: T;
+  isActive?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tags_select".
+ */
+export interface TagsSelect<T extends boolean = true> {
+  name?: T;
+  generateSlug?: T;
+  slug?: T;
+  usageCount?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }

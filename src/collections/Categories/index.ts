@@ -47,7 +47,7 @@ export const Categories: CollectionConfig = {
     {
       name: 'parent',
       type: 'relationship',
-      relationTo: 'categories' as 'users', // temp: 'categories' no está en CollectionSlug hasta generate:types
+      relationTo: 'categories',
       hasMany: false,
     },
     {

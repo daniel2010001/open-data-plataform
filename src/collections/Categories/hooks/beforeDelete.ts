@@ -14,7 +14,7 @@ export const categoriesBeforeDelete: CollectionBeforeDeleteHook = async ({ id, r
   // R7 — Guard: no subcategorías
   // -------------------------------------------------------------------------
   const children = await req.payload.find({
-    collection: 'categories' as 'users', // temp: hasta generate:types
+    collection: 'categories',
     where: {
       parent: { equals: id },
     },
