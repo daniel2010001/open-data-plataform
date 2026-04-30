@@ -17,21 +17,31 @@ export const Datasets: CollectionConfig = {
     // Solo owner o admin de una org pueden crear datasets en su org
     create: allowIf(hasOrgRole(['owner', 'admin'])),
 
-    // Sysadmin: todos. Owner/admin: los de su org. Collaborator activo: ese dataset.
-    // Visibilidad compleja se implementa en Fase 5.
+    // Sysadmin: todos. Owner/admin: los de su org (excepto disabled). Collaborator activo: ese dataset.
     read: allow(
       allowIf(isSysadmin),
-      allowIf(hasOrgRole(['owner', 'admin']), (args): Where => ({
+      // Owner/admin ven todos los de su org excepto deletedAt — disabled incluido (R9: owner puede ver disabled)
+      allowIf(hasOrgRole(['owner']), (args): Where => ({
         and: [
           { organization: { equals: args.req.user.organization } },
           { deletedAt: { exists: false } },
         ],
       })),
+      // Admin: igual que owner pero no puede ver disabled (R9 — solo sysadmin y owner)
+      allowIf(hasOrgRole(['admin']), (args): Where => ({
+        and: [
+          { organization: { equals: args.req.user.organization } },
+          { deletedAt: { exists: false } },
+          { status: { not_equals: 'disabled' } },
+        ],
+      })),
+      // Collaborator activo: ese dataset, sin deletedAt, sin disabled
       allowIf(isAuthenticated, (args): Where => ({
         and: [
           { 'collaborators.user': { equals: args.req.user.id } },
           { 'collaborators.revokedAt': { exists: false } },
           { deletedAt: { exists: false } },
+          { status: { not_equals: 'disabled' } },
         ],
       })),
     ),
@@ -156,6 +166,29 @@ export const Datasets: CollectionConfig = {
         { label: 'Solo org', value: 'org_only' },
         { label: 'Público', value: 'public' },
       ],
+    },
+    {
+      // Solicitud de elevación de visibilidad por el steward (R7).
+      // El owner aprueba seteando `visibility` al valor de este campo y limpiando la solicitud.
+      name: 'visibilityRequest',
+      type: 'select',
+      options: [
+        { label: 'Solo org', value: 'org_only' },
+        { label: 'Público', value: 'public' },
+      ],
+      admin: {
+        description: 'Visibilidad solicitada por el steward. El owner aprueba o rechaza.',
+        condition: (_, siblingData) => Boolean(siblingData?.id),
+      },
+    },
+    {
+      name: 'visibilityRequestedAt',
+      type: 'date',
+      admin: {
+        readOnly: true,
+        description: 'Fecha en que el steward hizo la solicitud de visibilidad.',
+        condition: (_, siblingData) => Boolean(siblingData?.visibilityRequest),
+      },
     },
 
     // --- Collaborators (array embebido) ---
