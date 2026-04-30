@@ -20,8 +20,11 @@ const VISIBILITY_LEVEL: Record<string, number> = {
   public: 2,
 }
 
+type CollaboratorRow = NonNullable<Dataset['collaborators']>[number]
+type CollaboratorInput = Partial<CollaboratorRow> & { reason?: string }
+
 /**
- * Maneja las reglas del flujo editorial y visibilidad de Datasets.
+ * Maneja las reglas del flujo editorial, visibilidad y collaborators de Datasets.
  *
  * R3  — Si un dataset `approved` es editado en campos de contenido, vuelve a `draft`
  * R5  — Auto-review prohibido: el owner no puede aprobar contenido que él mismo editó
@@ -29,6 +32,8 @@ const VISIBILITY_LEVEL: Record<string, number> = {
  * R7  — Elevación de visibilidad requiere solicitud del steward; owner no puede elevar sin ella
  * R10 — `deletedAt` bloquea toda mutación
  * R11 — Solo `status: active` puede avanzar en el flujo editorial
+ * R12 — Collaborator con acceso explícito prevalece sobre visibilidad (cubierto en access read)
+ * R13 — Collaborators solo de la misma org en v1
  */
 export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async ({
   data,
@@ -37,6 +42,10 @@ export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async (
   originalDoc,
 }) => {
   if (operation === 'create') return data
+
+  const user = req.user as AuthenticatedUser
+  const isOwner = user?.orgRole === 'owner'
+  const isSysadmin = user?.systemRole === 'sysadmin'
 
   // R10 — deletedAt bloquea toda mutación
   if (originalDoc?.deletedAt) {
@@ -97,10 +106,6 @@ export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async (
   const currentVisibility = originalDoc?.visibility
 
   if (incomingVisibility && incomingVisibility !== currentVisibility) {
-    const user = req.user as AuthenticatedUser
-    const isOwner = user?.orgRole === 'owner'
-    const isSysadmin = user?.systemRole === 'sysadmin'
-
     const currentLevel = VISIBILITY_LEVEL[currentVisibility ?? 'private'] ?? 0
     const incomingLevel = VISIBILITY_LEVEL[incomingVisibility] ?? 0
     const isElevation = incomingLevel > currentLevel
@@ -141,17 +146,12 @@ export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async (
 
   // Solicitud de visibilidad por steward — setear visibilityRequestedAt automáticamente
   if (data.visibilityRequest && data.visibilityRequest !== originalDoc?.visibilityRequest) {
-    const user = req.user as AuthenticatedUser
-    const isOwner = user?.orgRole === 'owner'
-    const isSysadmin = user?.systemRole === 'sysadmin'
-
     if (isOwner || isSysadmin) {
       throw new Error(
         'El owner no puede hacer solicitudes de visibilidad. Solo el steward puede solicitarla.',
       )
     }
 
-    // Validar que la solicitud sea una elevación real
     const currentLevel = VISIBILITY_LEVEL[originalDoc?.visibility ?? 'private'] ?? 0
     const requestedLevel = VISIBILITY_LEVEL[data.visibilityRequest] ?? 0
     if (requestedLevel <= currentLevel) {
@@ -161,6 +161,126 @@ export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async (
     }
 
     data = { ...data, visibilityRequestedAt: new Date().toISOString() }
+  }
+
+  // --- Reglas de collaborators R13 + guards de rol ---
+  if (data.collaborators) {
+    const existingById = new Map(
+      (originalDoc?.collaborators ?? []).map((c) => [c.id, c]),
+    )
+
+    const actorId = user?.id
+    const actorOrgId = user?.organization
+
+    // ¿El actor es steward o editor activo en este dataset?
+    const actorIsActiveCollaborator = (originalDoc?.collaborators ?? []).some((c) => {
+      const uid = typeof c.user === 'object' && c.user !== null ? c.user.id : c.user
+      return uid === actorId && (c.role === 'steward' || c.role === 'editor') && !c.revokedAt
+    })
+
+    const processedCollaborators: CollaboratorInput[] = []
+
+    for (const incoming of data.collaborators as CollaboratorInput[]) {
+      const existing = incoming.id ? existingById.get(incoming.id) : undefined
+      const isNew = !existing
+      const targetUserId =
+        typeof incoming.user === 'object' && incoming.user !== null
+          ? (incoming.user as { id: number }).id
+          : (incoming.user as number | undefined)
+
+      const roleChanged = existing && incoming.role && incoming.role !== existing.role
+      const revokedChanged =
+        existing &&
+        incoming.revokedAt !== undefined &&
+        incoming.revokedAt !== existing.revokedAt
+
+      // Fila sin cambios relevantes — pasar sin tocar
+      if (!isNew && !roleChanged && !revokedChanged) {
+        processedCollaborators.push(incoming)
+        continue
+      }
+
+      if (isNew || roleChanged) {
+        const targetRole = incoming.role
+
+        // R13 — Solo usuarios de la misma org
+        if (targetUserId && actorOrgId) {
+          const membership = await req.payload.find({
+            collection: 'org-memberships',
+            where: {
+              and: [
+                { user: { equals: targetUserId } },
+                { organization: { equals: actorOrgId } },
+              ],
+            },
+            limit: 1,
+            overrideAccess: true,
+          })
+          if (membership.totalDocs === 0) {
+            throw new Error(
+              'El usuario no pertenece a esta organización. En v1, los collaborators deben ser de la misma org. (R13)',
+            )
+          }
+        }
+
+        // Guard de rol
+        if (targetRole === 'steward') {
+          // Solo owner puede asignar steward — con reason obligatorio
+          if (!isOwner && !isSysadmin) {
+            throw new Error('Solo el owner puede asignar el rol de steward a un collaborator.')
+          }
+          if (!incoming.reason?.trim()) {
+            throw new Error(
+              'Se requiere una justificación (reason) para asignar el rol de steward.',
+            )
+          }
+          // TODO: Fase 8 — registrar en AuditLog: STEWARD_ASSIGNED con reason
+        } else if (targetRole === 'editor' || targetRole === 'viewer') {
+          // Steward activo, owner o sysadmin pueden asignar editor/viewer
+          if (!isOwner && !isSysadmin && !actorIsActiveCollaborator) {
+            throw new Error('Solo el steward, owner o sysadmin pueden asignar collaborators.')
+          }
+        }
+
+        // Auto-setear assignedBy y orgIdAtAssignment en filas nuevas
+        if (isNew) {
+          const targetMembership = targetUserId
+            ? await req.payload.find({
+                collection: 'org-memberships',
+                where: { user: { equals: targetUserId } },
+                limit: 1,
+                overrideAccess: true,
+              })
+            : null
+
+          const orgIdAtAssignment =
+            targetMembership?.docs[0]
+              ? typeof targetMembership.docs[0].organization === 'object'
+                ? (targetMembership.docs[0].organization as { id: number }).id
+                : targetMembership.docs[0].organization
+              : null
+
+          processedCollaborators.push({
+            ...incoming,
+            assignedBy: actorId,
+            orgIdAtAssignment: orgIdAtAssignment as number | null | undefined,
+          })
+          continue
+        }
+      }
+
+      // Revocación — steward activo, owner o sysadmin pueden revocar
+      if (revokedChanged && incoming.revokedAt) {
+        if (!isOwner && !isSysadmin && !actorIsActiveCollaborator) {
+          throw new Error('Solo el steward, owner o sysadmin pueden revocar collaborators.')
+        }
+        // TODO: Fase 8 — registrar en AuditLog: COLLABORATOR_REMOVED
+      }
+
+      processedCollaborators.push(incoming)
+    }
+
+    data = { ...data, collaborators: processedCollaborators as typeof data.collaborators }
   }
 
   // Validación de licenseCustom requerido cuando license === 'other'
