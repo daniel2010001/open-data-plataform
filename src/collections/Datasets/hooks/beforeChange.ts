@@ -80,8 +80,131 @@ export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async (
     }
   }
 
+  // --- Audit log de transiciones de editorialStatus ---
+  const resolvedEditorial = data.editorialStatus ?? currentEditorial
+  if (incomingEditorial && incomingEditorial !== currentEditorial) {
+    const orgId =
+      typeof originalDoc!.organization === 'object'
+        ? (originalDoc!.organization as { id: number }).id
+        : originalDoc!.organization
+
+    if (incomingEditorial === 'in_review') {
+      await createAuditLog(req, {
+        action: 'DATASET_SUBMITTED_FOR_REVIEW',
+        actor: req.user!.id,
+        targetType: 'dataset',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+      })
+    } else if (incomingEditorial === 'approved') {
+      await createAuditLog(req, {
+        action: 'DATASET_APPROVED',
+        actor: req.user!.id,
+        targetType: 'dataset',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+      })
+    } else if (incomingEditorial === 'rejected') {
+      await createAuditLog(req, {
+        action: 'DATASET_REJECTED',
+        actor: req.user!.id,
+        targetType: 'dataset',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+        reason: (data as { reason?: string }).reason,
+      })
+    } else if (incomingEditorial === 'draft' && currentEditorial === 'in_review') {
+      // Devuelto a borrador desde revisión (owner)
+      await createAuditLog(req, {
+        action: 'DATASET_RETURNED_TO_DRAFT',
+        actor: req.user!.id,
+        targetType: 'dataset',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+      })
+    }
+  }
+
+  // --- Audit log de transiciones de status operativo ---
+  const incomingStatus = data.status
+  const currentStatus2 = originalDoc?.status
+  if (incomingStatus && incomingStatus !== currentStatus2) {
+    const orgId =
+      typeof originalDoc!.organization === 'object'
+        ? (originalDoc!.organization as { id: number }).id
+        : originalDoc!.organization
+
+    if (incomingStatus === 'archived') {
+      await createAuditLog(req, {
+        action: 'DATASET_ARCHIVED',
+        actor: req.user!.id,
+        targetType: 'dataset',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+        reason: (data as { reason?: string }).reason,
+      })
+    } else if (incomingStatus === 'active' && currentStatus2 === 'archived') {
+      await createAuditLog(req, {
+        action: 'DATASET_UNARCHIVED',
+        actor: req.user!.id,
+        targetType: 'dataset',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+        reason: (data as { reason?: string }).reason,
+      })
+    } else if (incomingStatus === 'disabled') {
+      await createAuditLog(req, {
+        action: 'DATASET_DISABLED',
+        actor: req.user!.id,
+        targetType: 'dataset',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+        reason: (data as { reason?: string }).reason,
+      })
+    } else if (incomingStatus === 'active' && currentStatus2 === 'disabled') {
+      await createAuditLog(req, {
+        action: 'DATASET_ENABLED',
+        actor: req.user!.id,
+        targetType: 'dataset',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+        reason: (data as { reason?: string }).reason,
+      })
+    }
+  }
+
+  // --- Audit log de soft-delete y restore ---
+  const incomingDeletedAt = (data as { deletedAt?: string | null }).deletedAt
+  const currentDeletedAt = originalDoc?.deletedAt
+  if (incomingDeletedAt !== undefined && incomingDeletedAt !== currentDeletedAt) {
+    const orgId =
+      typeof originalDoc!.organization === 'object'
+        ? (originalDoc!.organization as { id: number }).id
+        : originalDoc!.organization
+
+    if (incomingDeletedAt && !currentDeletedAt) {
+      await createAuditLog(req, {
+        action: 'DATASET_SOFT_DELETED',
+        actor: req.user!.id,
+        targetType: 'dataset',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+        reason: (data as { reason?: string }).reason,
+      })
+    } else if (!incomingDeletedAt && currentDeletedAt) {
+      await createAuditLog(req, {
+        action: 'DATASET_RESTORED',
+        actor: req.user!.id,
+        targetType: 'dataset',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+        reason: (data as { reason?: string }).reason,
+      })
+    }
+  }
+
   // R5 — Auto-review prohibido: quién aprueba no puede haber editado el dataset
-  if (incomingEditorial === 'approved') {
+  if (resolvedEditorial === 'approved' && incomingEditorial === 'approved') {
     const reviewerId = req.user?.id
     const collaborators = originalDoc?.collaborators ?? []
 
@@ -258,18 +381,17 @@ export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async (
               'Se requiere una justificación (reason) para asignar el rol de steward.',
             )
           }
-        // TODO: Fase 8 — registrar en AuditLog: STEWARD_ASSIGNED con reason
-        await createAuditLog(req, {
-          action: 'STEWARD_ASSIGNED',
-          actor: req.user!.id,
-          targetType: 'dataset',
-          targetId: originalDoc!.id,
-          organizationId: typeof originalDoc!.organization === 'object'
-            ? (originalDoc!.organization as { id: number }).id
-            : originalDoc!.organization,
-          payload: { userId: targetUserId, role: 'steward' },
-          reason: incoming.reason,
-        })
+          await createAuditLog(req, {
+            action: 'STEWARD_ASSIGNED',
+            actor: req.user!.id,
+            targetType: 'dataset',
+            targetId: originalDoc!.id,
+            organizationId: typeof originalDoc!.organization === 'object'
+              ? (originalDoc!.organization as { id: number }).id
+              : originalDoc!.organization,
+            payload: { userId: targetUserId, role: 'steward' },
+            reason: incoming.reason,
+          })
         } else if (targetRole === 'editor' || targetRole === 'viewer') {
           // Steward activo, owner o sysadmin pueden asignar editor/viewer
           if (!isOwner && !isSysadmin && !actorIsActiveCollaborator) {
@@ -294,6 +416,20 @@ export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async (
                 ? (targetMembership.docs[0].organization as { id: number }).id
                 : targetMembership.docs[0].organization
               : null
+
+          // Audit log de collaborator agregado (steward ya tiene su propio log arriba)
+          if (targetRole !== 'steward') {
+            await createAuditLog(req, {
+              action: 'COLLABORATOR_ADDED',
+              actor: req.user!.id,
+              targetType: 'dataset',
+              targetId: originalDoc!.id,
+              organizationId: typeof originalDoc!.organization === 'object'
+                ? (originalDoc!.organization as { id: number }).id
+                : originalDoc!.organization,
+              payload: { userId: targetUserId, role: targetRole },
+            })
+          }
 
           processedCollaborators.push({
             ...incoming,

@@ -1,6 +1,7 @@
 import type { CollectionBeforeChangeHook } from 'payload'
 import type { Resource } from '@/payload-types'
 import type { AuthenticatedUser } from '@/access/types'
+import { createAuditLog } from '../../_hooks/createAuditLog'
 
 /**
  * Reglas del flujo de Resources.
@@ -80,6 +81,90 @@ export const resourcesBeforeChange: CollectionBeforeChangeHook<Resource> = async
     const incomingKey = data.fileStorageKey ?? originalDoc?.fileStorageKey
     if (!incomingKey?.trim()) {
       throw new Error('El campo fileStorageKey es requerido para recursos de tipo "file".')
+    }
+  }
+
+  // --- Resolución del orgId del resource (via dataset) ---
+  const getOrgId = async (): Promise<number | null> => {
+    const datasetId =
+      typeof originalDoc?.dataset === 'object' && originalDoc.dataset !== null
+        ? (originalDoc.dataset as { id: number }).id
+        : originalDoc?.dataset
+    if (!datasetId) return null
+    const dataset = await req.payload.findByID({
+      collection: 'datasets',
+      id: datasetId,
+      depth: 0,
+      overrideAccess: true,
+    })
+    if (!dataset?.organization) return null
+    return typeof dataset.organization === 'object'
+      ? (dataset.organization as { id: number }).id
+      : (dataset.organization as number)
+  }
+
+  // --- Audit log: cambio de visibilidad ---
+  if (data.visibility && data.visibility !== originalDoc?.visibility) {
+    await createAuditLog(req, {
+      action: 'RESOURCE_VISIBILITY_CHANGED',
+      actor: req.user!.id,
+      targetType: 'resource',
+      targetId: originalDoc!.id,
+      organizationId: await getOrgId(),
+      payload: { from: originalDoc?.visibility, to: data.visibility },
+      reason: (data as { reason?: string }).reason,
+    })
+  }
+
+  // --- Audit log: cambio de status operativo ---
+  if (data.status && data.status !== originalDoc?.status) {
+    const orgId = await getOrgId()
+
+    if (data.status === 'archived') {
+      await createAuditLog(req, {
+        action: 'RESOURCE_ARCHIVED',
+        actor: req.user!.id,
+        targetType: 'resource',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+        reason: (data as { reason?: string }).reason,
+      })
+    } else if (data.status === 'disabled') {
+      await createAuditLog(req, {
+        action: 'RESOURCE_DISABLED',
+        actor: req.user!.id,
+        targetType: 'resource',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+        reason: (data as { reason?: string }).reason,
+      })
+    }
+  }
+
+  // --- Audit log: soft-delete y restore ---
+  const incomingDeletedAt = (data as { deletedAt?: string | null }).deletedAt
+  const currentDeletedAt = originalDoc?.deletedAt
+  if (incomingDeletedAt !== undefined && incomingDeletedAt !== currentDeletedAt) {
+    const orgId = await getOrgId()
+
+    if (incomingDeletedAt && !currentDeletedAt) {
+      await createAuditLog(req, {
+        action: 'RESOURCE_SOFT_DELETED',
+        actor: req.user!.id,
+        targetType: 'resource',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+        reason: (data as { reason?: string }).reason,
+      })
+    } else if (!incomingDeletedAt && currentDeletedAt) {
+      await createAuditLog(req, {
+        action: 'RESOURCE_RESTORED',
+        actor: req.user!.id,
+        targetType: 'resource',
+        targetId: originalDoc!.id,
+        organizationId: orgId,
+        reason: (data as { reason?: string }).reason,
+      })
     }
   }
 
