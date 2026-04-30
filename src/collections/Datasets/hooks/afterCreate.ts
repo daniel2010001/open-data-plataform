@@ -6,13 +6,36 @@ import type { AuthenticatedUser } from '@/access/types'
  * R2 — Al crearse un dataset, el creador se convierte automáticamente en el
  * primer steward. Se registra en el array `collaborators` embebido con role: steward.
  *
- * Solo actúa en operation 'create'. En update, no toca collaborators.
+ * También propaga `everPublished: true` a todos los resources del dataset cuando
+ * `editorialStatus` transiciona a `approved`. Esto permite que beforeDelete de
+ * Resources distinga entre hard delete (nunca publicado) y soft-delete semántico.
  */
 export const datasetsAfterCreate: CollectionAfterChangeHook<Dataset> = async ({
   doc,
   req,
   operation,
+  previousDoc,
 }) => {
+  // Propagar everPublished cuando editorialStatus → approved
+  if (
+    operation === 'update' &&
+    doc.editorialStatus === 'approved' &&
+    previousDoc?.editorialStatus !== 'approved'
+  ) {
+    await req.payload.update({
+      collection: 'resources',
+      where: {
+        and: [
+          { dataset: { equals: doc.id } },
+          { everPublished: { not_equals: true } },
+        ],
+      },
+      data: { everPublished: true },
+      overrideAccess: true,
+    })
+    return doc
+  }
+
   if (operation !== 'create') return doc
 
   const userId = req.user?.id

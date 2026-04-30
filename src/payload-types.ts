@@ -74,6 +74,7 @@ export interface Config {
     categories: Category;
     tags: Tag;
     datasets: Dataset;
+    resources: Resource;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -88,6 +89,7 @@ export interface Config {
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     tags: TagsSelect<false> | TagsSelect<true>;
     datasets: DatasetsSelect<false> | DatasetsSelect<true>;
+    resources: ResourcesSelect<false> | ResourcesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -344,6 +346,65 @@ export interface Dataset {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "resources".
+ */
+export interface Resource {
+  id: number;
+  /**
+   * Dataset al que pertenece este resource.
+   */
+  dataset: number | Dataset;
+  title: string;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  description?: string | null;
+  /**
+   * Tipo del recurso. No puede modificarse después de creado.
+   */
+  resourceType: 'file' | 'link';
+  status?: ('active' | 'archived' | 'disabled') | null;
+  visibility?: ('private' | 'org_only' | 'public') | null;
+  /**
+   * Clave del archivo en el storage (S3 key, ruta, etc.).
+   */
+  fileStorageKey?: string | null;
+  /**
+   * Tamaño del archivo en bytes.
+   */
+  fileSize?: number | null;
+  /**
+   * MIME type del archivo (ej: text/csv, application/json).
+   */
+  mimeType?: string | null;
+  /**
+   * Hash del archivo (SHA-256) para verificación de integridad.
+   */
+  fileHash?: string | null;
+  /**
+   * URL del recurso externo.
+   */
+  externalUrl?: string | null;
+  createdBy?: (number | null) | User;
+  /**
+   * Indica si este resource alguna vez fue parte de una versión publicada.
+   */
+  everPublished?: boolean | null;
+  /**
+   * Si está marcado, este resource no se incluirá en la próxima versión del dataset.
+   */
+  excludeFromNextVersion?: boolean | null;
+  /**
+   * Soft-delete. Si tiene valor, el resource está eliminado.
+   */
+  deletedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -393,6 +454,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'datasets';
         value: number | Dataset;
+      } | null)
+    | ({
+        relationTo: 'resources';
+        value: number | Resource;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -570,6 +635,31 @@ export interface DatasetsSelect<T extends boolean = true> {
       };
   createdBy?: T;
   originDatasetId?: T;
+  deletedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "resources_select".
+ */
+export interface ResourcesSelect<T extends boolean = true> {
+  dataset?: T;
+  title?: T;
+  generateSlug?: T;
+  slug?: T;
+  description?: T;
+  resourceType?: T;
+  status?: T;
+  visibility?: T;
+  fileStorageKey?: T;
+  fileSize?: T;
+  mimeType?: T;
+  fileHash?: T;
+  externalUrl?: T;
+  createdBy?: T;
+  everPublished?: T;
+  excludeFromNextVersion?: T;
   deletedAt?: T;
   updatedAt?: T;
   createdAt?: T;
