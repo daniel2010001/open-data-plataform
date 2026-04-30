@@ -75,6 +75,7 @@ export interface Config {
     tags: Tag;
     datasets: Dataset;
     resources: Resource;
+    'audit-logs': AuditLog;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -90,6 +91,7 @@ export interface Config {
     tags: TagsSelect<false> | TagsSelect<true>;
     datasets: DatasetsSelect<false> | DatasetsSelect<true>;
     resources: ResourcesSelect<false> | ResourcesSelect<true>;
+    'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -405,6 +407,79 @@ export interface Resource {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-logs".
+ */
+export interface AuditLog {
+  id: number;
+  action:
+    | 'DATASET_SUBMITTED_FOR_REVIEW'
+    | 'DATASET_APPROVED'
+    | 'DATASET_REJECTED'
+    | 'DATASET_RETURNED_TO_DRAFT'
+    | 'DATASET_VISIBILITY_ELEVATED'
+    | 'DATASET_VISIBILITY_DEGRADED'
+    | 'DATASET_VISIBILITY_REDUCED_BY_REVIEWER'
+    | 'DATASET_ARCHIVED'
+    | 'DATASET_UNARCHIVED'
+    | 'DATASET_DISABLED'
+    | 'DATASET_ENABLED'
+    | 'DATASET_SOFT_DELETED'
+    | 'DATASET_RESTORED'
+    | 'DATASET_CLONED'
+    | 'PURGE_REQUESTED'
+    | 'PURGE_EXECUTED'
+    | 'COLLABORATOR_ADDED'
+    | 'COLLABORATOR_REMOVED'
+    | 'COLLABORATOR_ROLE_CHANGED'
+    | 'STEWARD_ASSIGNED'
+    | 'STEWARD_REVOKED'
+    | 'RESOURCE_VISIBILITY_CHANGED'
+    | 'RESOURCE_VISIBILITY_REDUCED_BY_REVIEWER'
+    | 'RESOURCE_ARCHIVED'
+    | 'RESOURCE_DISABLED'
+    | 'RESOURCE_SOFT_DELETED'
+    | 'RESOURCE_RESTORED'
+    | 'PURGE_RESOURCE'
+    | 'ORG_OWNERSHIP_TRANSFERRED'
+    | 'ORG_DISABLED'
+    | 'USER_DEACTIVATED'
+    | 'USER_ROLE_CHANGED'
+    | 'MEMBERSHIP_CREATED'
+    | 'MEMBERSHIP_REMOVED';
+  /**
+   * Usuario que realizó la acción. R8: siempre requerido.
+   */
+  actor: number | User;
+  targetType: 'dataset' | 'resource' | 'organization' | 'user' | 'org_membership';
+  /**
+   * ID de la entidad afectada.
+   */
+  targetId: string;
+  /**
+   * Org a la que pertenece el evento — para filtrado por owner (R4).
+   */
+  organizationId?: (number | null) | Organization;
+  /**
+   * Datos del evento: diff, hashes SHA256 de campos extensos, campos anteriores/nuevos.
+   */
+  payload?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Justificación — requerida para las acciones marcadas en el catálogo (R6).
+   */
+  reason?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -458,6 +533,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'resources';
         value: number | Resource;
+      } | null)
+    | ({
+        relationTo: 'audit-logs';
+        value: number | AuditLog;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -661,6 +740,21 @@ export interface ResourcesSelect<T extends boolean = true> {
   everPublished?: T;
   excludeFromNextVersion?: T;
   deletedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-logs_select".
+ */
+export interface AuditLogsSelect<T extends boolean = true> {
+  action?: T;
+  actor?: T;
+  targetType?: T;
+  targetId?: T;
+  organizationId?: T;
+  payload?: T;
+  reason?: T;
   updatedAt?: T;
   createdAt?: T;
 }

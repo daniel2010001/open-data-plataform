@@ -1,6 +1,7 @@
 import type { CollectionBeforeChangeHook } from 'payload'
 import type { Dataset } from '@/payload-types'
 import type { AuthenticatedUser } from '@/access/types'
+import { createAuditLog } from '../../_hooks/createAuditLog'
 
 // Campos de contenido que al ser editados hacen que un dataset approved vuelva a draft (R3)
 const CONTENT_FIELDS: (keyof Dataset)[] = [
@@ -131,7 +132,20 @@ export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async (
         }
         // Owner aprueba — limpiar la solicitud
         data = { ...data, visibilityRequest: null, visibilityRequestedAt: null }
-        // TODO: Fase 8 — registrar en AuditLog: DATASET_VISIBILITY_ELEVATED
+        await createAuditLog(req, {
+          action: 'DATASET_VISIBILITY_ELEVATED',
+          actor: req.user!.id,
+          targetType: 'dataset',
+          targetId: originalDoc!.id,
+          organizationId: typeof originalDoc!.organization === 'object'
+            ? (originalDoc!.organization as { id: number }).id
+            : originalDoc!.organization,
+          payload: {
+            from: currentVisibility,
+            to: incomingVisibility,
+            visibilityRequest: originalDoc.visibilityRequest,
+          },
+        })
       }
     } else {
       // R6 — Degradación unilateral: solo owner o sysadmin
@@ -140,7 +154,17 @@ export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async (
           'Solo el owner puede degradar la visibilidad de un dataset.',
         )
       }
-      // TODO: Fase 8 — registrar en AuditLog: DATASET_VISIBILITY_DEGRADED con reason
+      await createAuditLog(req, {
+        action: 'DATASET_VISIBILITY_DEGRADED',
+        actor: req.user!.id,
+        targetType: 'dataset',
+        targetId: originalDoc!.id,
+        organizationId: typeof originalDoc!.organization === 'object'
+          ? (originalDoc!.organization as { id: number }).id
+          : originalDoc!.organization,
+        payload: { from: currentVisibility, to: incomingVisibility },
+        reason: (data as { reason?: string }).reason,
+      })
     }
   }
 
@@ -234,7 +258,18 @@ export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async (
               'Se requiere una justificación (reason) para asignar el rol de steward.',
             )
           }
-          // TODO: Fase 8 — registrar en AuditLog: STEWARD_ASSIGNED con reason
+        // TODO: Fase 8 — registrar en AuditLog: STEWARD_ASSIGNED con reason
+        await createAuditLog(req, {
+          action: 'STEWARD_ASSIGNED',
+          actor: req.user!.id,
+          targetType: 'dataset',
+          targetId: originalDoc!.id,
+          organizationId: typeof originalDoc!.organization === 'object'
+            ? (originalDoc!.organization as { id: number }).id
+            : originalDoc!.organization,
+          payload: { userId: targetUserId, role: 'steward' },
+          reason: incoming.reason,
+        })
         } else if (targetRole === 'editor' || targetRole === 'viewer') {
           // Steward activo, owner o sysadmin pueden asignar editor/viewer
           if (!isOwner && !isSysadmin && !actorIsActiveCollaborator) {
@@ -274,7 +309,16 @@ export const datasetsBeforeChange: CollectionBeforeChangeHook<Dataset> = async (
         if (!isOwner && !isSysadmin && !actorIsActiveCollaborator) {
           throw new Error('Solo el steward, owner o sysadmin pueden revocar collaborators.')
         }
-        // TODO: Fase 8 — registrar en AuditLog: COLLABORATOR_REMOVED
+        await createAuditLog(req, {
+          action: 'COLLABORATOR_REMOVED',
+          actor: req.user!.id,
+          targetType: 'dataset',
+          targetId: originalDoc!.id,
+          organizationId: typeof originalDoc!.organization === 'object'
+            ? (originalDoc!.organization as { id: number }).id
+            : originalDoc!.organization,
+          payload: { userId: existing?.user, role: existing?.role },
+        })
       }
 
       processedCollaborators.push(incoming)

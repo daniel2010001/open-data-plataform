@@ -13,6 +13,7 @@ import { Categories } from './collections/Categories'
 import { Tags } from './collections/Tags'
 import { Datasets } from './collections/Datasets'
 import { Resources } from './collections/Resources'
+import { AuditLog } from './collections/AuditLog'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -24,7 +25,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Organizations, OrgMemberships, Categories, Tags, Datasets, Resources],
+  collections: [Users, Media, Organizations, OrgMemberships, Categories, Tags, Datasets, Resources, AuditLog],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
