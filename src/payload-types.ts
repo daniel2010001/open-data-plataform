@@ -77,6 +77,7 @@ export interface Config {
     resources: Resource;
     'audit-logs': AuditLog;
     teams: Team;
+    'data-collections': DataCollection;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -94,6 +95,7 @@ export interface Config {
     resources: ResourcesSelect<false> | ResourcesSelect<true>;
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
     teams: TeamsSelect<false> | TeamsSelect<true>;
+    'data-collections': DataCollectionsSelect<false> | DataCollectionsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -508,6 +510,46 @@ export interface Team {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "data-collections".
+ */
+export interface DataCollection {
+  id: number;
+  name: string;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  organization: number | Organization;
+  /**
+   * Datasets incluidos en esta colección. Solo de la misma org (R2). R7: cada dataset aplica sus propias reglas al leer.
+   */
+  datasets?: (number | Dataset)[] | null;
+  /**
+   * Publicar hace la colección visible para cualquier usuario (R5).
+   */
+  isPublished?: boolean | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -569,6 +611,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'teams';
         value: number | Team;
+      } | null)
+    | ({
+        relationTo: 'data-collections';
+        value: number | DataCollection;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -802,6 +848,22 @@ export interface TeamsSelect<T extends boolean = true> {
   organization?: T;
   members?: T;
   isActive?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "data-collections_select".
+ */
+export interface DataCollectionsSelect<T extends boolean = true> {
+  name?: T;
+  generateSlug?: T;
+  slug?: T;
+  description?: T;
+  organization?: T;
+  datasets?: T;
+  isPublished?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
