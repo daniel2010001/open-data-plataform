@@ -301,6 +301,14 @@ export interface Dataset {
   status?: ('active' | 'archived' | 'disabled') | null;
   editorialStatus?: ('draft' | 'in_review' | 'approved' | 'rejected') | null;
   visibility?: ('private' | 'org_only' | 'public') | null;
+  /**
+   * Visibilidad solicitada por el steward. El owner aprueba o rechaza.
+   */
+  visibilityRequest?: ('org_only' | 'public') | null;
+  /**
+   * Fecha en que el steward hizo la solicitud de visibilidad.
+   */
+  visibilityRequestedAt?: string | null;
   collaborators?:
     | {
         user: number | User;
@@ -546,6 +554,8 @@ export interface DatasetsSelect<T extends boolean = true> {
   status?: T;
   editorialStatus?: T;
   visibility?: T;
+  visibilityRequest?: T;
+  visibilityRequestedAt?: T;
   collaborators?:
     | T
     | {
