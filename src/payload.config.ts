@@ -14,6 +14,7 @@ import { Tags } from './collections/Tags'
 import { Datasets } from './collections/Datasets'
 import { Resources } from './collections/Resources'
 import { AuditLog } from './collections/AuditLog'
+import { Teams } from './collections/Teams'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -25,7 +26,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Organizations, OrgMemberships, Categories, Tags, Datasets, Resources, AuditLog],
+  collections: [Users, Media, Organizations, OrgMemberships, Categories, Tags, Datasets, Resources, AuditLog, Teams],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

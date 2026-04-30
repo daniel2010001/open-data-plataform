@@ -76,6 +76,7 @@ export interface Config {
     datasets: Dataset;
     resources: Resource;
     'audit-logs': AuditLog;
+    teams: Team;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -92,6 +93,7 @@ export interface Config {
     datasets: DatasetsSelect<false> | DatasetsSelect<true>;
     resources: ResourcesSelect<false> | ResourcesSelect<true>;
     'audit-logs': AuditLogsSelect<false> | AuditLogsSelect<true>;
+    teams: TeamsSelect<false> | TeamsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -480,6 +482,32 @@ export interface AuditLog {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teams".
+ */
+export interface Team {
+  id: number;
+  name: string;
+  /**
+   * When enabled, the slug will auto-generate from the title field on save and autosave.
+   */
+  generateSlug?: boolean | null;
+  slug: string;
+  description?: string | null;
+  organization: number | Organization;
+  /**
+   * Usuarios del team. Solo pueden ser de la misma org (R2).
+   */
+  members?: (number | User)[] | null;
+  /**
+   * Desactivar bloquea nuevas asignaciones. No revoca permisos expandidos. (R8)
+   */
+  isActive?: boolean | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
@@ -537,6 +565,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'audit-logs';
         value: number | AuditLog;
+      } | null)
+    | ({
+        relationTo: 'teams';
+        value: number | Team;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -755,6 +787,22 @@ export interface AuditLogsSelect<T extends boolean = true> {
   organizationId?: T;
   payload?: T;
   reason?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "teams_select".
+ */
+export interface TeamsSelect<T extends boolean = true> {
+  name?: T;
+  generateSlug?: T;
+  slug?: T;
+  description?: T;
+  organization?: T;
+  members?: T;
+  isActive?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
