@@ -5,13 +5,21 @@ import { sysadminOnly, selfOrSysadmin } from '@/access'
 import { assignCreatedBy } from '../_hooks/assignCreatedBy'
 import { autoAssignMembership } from './hooks/afterCreate'
 import { preventLastSysadminDeactivation } from './hooks/beforeChange'
+import { orgEnrichmentStrategy } from './strategies/orgEnrichment'
 
 export const Users: CollectionConfig = {
   slug: 'users',
   admin: {
     useAsTitle: 'email',
   },
-  auth: true,
+  auth: {
+    strategies: [
+      {
+        name: 'org-enrichment',
+        authenticate: orgEnrichmentStrategy,
+      },
+    ],
+  },
   access: {
     // R1 — Solo sysadmin u owner pueden crear users
     create: allow(
