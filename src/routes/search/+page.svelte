@@ -69,36 +69,37 @@
 		const fq = buildFilterQuery(filterMap);
 
 		try {
-			const baseUrl = import.meta.env.VITE_CKAN_URL;
-			if (baseUrl) {
-				const client = createCkanClient({ baseUrl });
-				const datasetApi = createDatasetApi(client);
+			// VITE_CKAN_URL vacío = ruta relativa (proxy de Vite en dev)
+			const baseUrl = import.meta.env.VITE_CKAN_URL || '';
+			const client = createCkanClient({ baseUrl });
+			const datasetApi = createDatasetApi(client);
 
-				const searchResult = await datasetApi.search({
-					q: query || '*:*',
-					fq,
-					limit: pageSize,
-					offset: (currentPage - 1) * pageSize,
-					sort: sortBy,
-					facet_field: ['organization', 'tags', 'res_format', 'license_id'],
-					facet_limit: 50,
-				});
+			const searchResult = await datasetApi.search({
+				q: query || '*:*',
+				fq,
+				limit: pageSize,
+				offset: (currentPage - 1) * pageSize,
+				sort: sortBy,
+				facet_field: ['organization', 'tags', 'res_format', 'license_id'],
+				facet_limit: 50,
+			});
 
-				results = searchResult.results;
-				total = searchResult.count;
-				facets = searchResult.search_facets;
-			} else {
-				// Modo desarrollo: datos mock
+			results = searchResult.results;
+			total = searchResult.count;
+			facets = searchResult.search_facets;
+		} catch (err) {
+			// Si falló CKAN, intentar con datos mock como respaldo
+			try {
 				const mock = getMockSearchResult();
 				results = mock.results;
 				total = mock.count;
 				facets = mock.search_facets;
+			} catch {
+				error = err instanceof Error ? err.message : 'Error de búsqueda';
+				results = [];
+				total = 0;
+				facets = {};
 			}
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Error de búsqueda';
-			results = [];
-			total = 0;
-			facets = {};
 		} finally {
 			loading = false;
 		}
