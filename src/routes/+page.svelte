@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Card from '$lib/components/ui/card/card.svelte';
+	import { env } from '$lib/env';
 	import { createCkanClient } from '$lib/api/client';
 	import { createDatasetApi } from '$lib/api/datasets';
 	import { getMockSearchResult, MOCK_ORGS } from '$lib/mock/data';
@@ -15,23 +16,17 @@
 
 	onMount(async () => {
 		try {
-			const baseUrl = import.meta.env.VITE_CKAN_URL;
-			if (baseUrl) {
-				const client = createCkanClient({ baseUrl });
-				const datasetApi = createDatasetApi(client);
-				const searchResult = await datasetApi.search({ limit: 0 });
-				stats.datasets = searchResult.count;
-			} else {
-				// Modo desarrollo
-				const mock = getMockSearchResult();
-				stats.datasets = mock.count;
-			}
-			stats.organizations = MOCK_ORGS.length;
-			stats.loading = false;
-		} catch (err) {
-			stats.error = err instanceof Error ? err.message : 'Error al conectar con CKAN';
-			stats.loading = false;
+			const client = createCkanClient({ baseUrl: env.CKAN_URL });
+			const datasetApi = createDatasetApi(client);
+			const searchResult = await datasetApi.search({ limit: 0 });
+			stats.datasets = searchResult.count;
+		} catch {
+			// Fallback: mock si CKAN no responde
+			const mock = getMockSearchResult();
+			stats.datasets = mock.count;
 		}
+		stats.organizations = MOCK_ORGS.length;
+		stats.loading = false;
 	});
 </script>
 

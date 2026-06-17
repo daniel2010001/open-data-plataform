@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { replaceState } from '$app/navigation';
+	import { env } from '$lib/env';
 	import { createCkanClient } from '$lib/api/client';
 	import { createDatasetApi } from '$lib/api/datasets';
 	import { buildFilterQuery } from '$lib/utils/ckan';
@@ -69,9 +70,8 @@
 		const fq = buildFilterQuery(filterMap);
 
 		try {
-			// VITE_CKAN_URL vacío = ruta relativa (proxy de Vite en dev)
-			const baseUrl = import.meta.env.VITE_CKAN_URL || '';
-			const client = createCkanClient({ baseUrl });
+			// CKAN_URL vacío = ruta relativa (proxy de Vite en dev)
+			const client = createCkanClient({ baseUrl: env.CKAN_URL });
 			const datasetApi = createDatasetApi(client);
 
 			const searchResult = await datasetApi.search({
